@@ -1,51 +1,28 @@
 from config import *
 
-from PyPDF2 import PdfReader
-from sentence_transformers import SentenceTransformer
-
 import qdrant_client as qc
 import qdrant_client.http.models as qmodels
 from qdrant_client.http.models import *
-
 import os
 import uuid
 
-def get_pdf_data(file_path, num_pages = 1):
-    reader = PdfReader(file_path)
-    full_doc_text = ""
-    pages = reader.pages
-    num_pages = len(pages) 
-    
-    try:
-        for page in range(num_pages):
-            current_page = reader.pages[page]
-            text = current_page.extract_text()
-            full_doc_text += text
-    except:
-        print("Error reading file")
-    finally:
-        return full_doc_text
-    
+from azure_openai_helper import generate_answer_from_context
+from pdf_helper import get_pdf_data, get_chunks
+from model_helper import load_model
 
-def get_chunks(fulltext:str,chunk_length =500) -> list:
-    text = fulltext
+def get_qdrant_client():
+    client = qc.QdrantClient(url=URL)
+    METRIC = qmodels.Distance.COSINE
+    return client
 
-    chunks = []
-    while len(text) > chunk_length:
-        last_period_index = text[:chunk_length].rfind('.')
-        if last_period_index == -1:
-            last_period_index = chunk_length
-        chunks.append(text[:last_period_index])
-        text = text[last_period_index+1:]
-    chunks.append(text)
 
-    return chunks
+client = get_qdrant_client()
 
-model = SentenceTransformer(MODEL_NAME)
-client = qc.QdrantClient(url=URL)
-METRIC = qmodels.Distance.COSINE
-
-def insert_qdrant_docs(FILE_PATH,CATEGORY):
+#   Inserting documents into Qdrant
+#   FILE_PATH: path to the folder containing the pdf files
+#   CATEGORY: category of the documents
+def insert_qdrant_docs(FILE_PATH,CATEGORY) -> None:
+    model = load_model()
     FILES = os.listdir(FILE_PATH)
     FILES_FULL_PATH = [FILE_PATH + file for file in FILES]
     for filename in FILES_FULL_PATH:
@@ -81,3 +58,32 @@ def insert_qdrant_docs(FILE_PATH,CATEGORY):
                     payloads=payloads[i:new_chunk]
                 ),
             )
+
+#   Searching documents in Qdrant
+#   user_input: user query
+#   CATEGORY: category of the documents
+
+def get_search_results(user_input, CATEGORY) -> str:
+    model = load_model()
+    xq = model.encode(user_input,convert_to_tensor=True)
+    if CATEGORY == '':
+        query_filter = None
+    else:
+        query_filter=qmodels.Filter(
+            must= [
+                FieldCondition(
+                    key="Category",
+                    match=models.MatchValue(value=CATEGORY),
+                )
+            ],
+        )
+    search_result = client.search(collection_name=COLLECTION_NAME,
+                                    query_vector=xq.tolist(), 
+                                    query_filter=query_filter,
+                                    limit=3)
+    contexts =""
+    for result in search_result:
+        contexts +=  result.payload['token']+"\n---\n"
+    reply = generate_answer_from_context(user_input, contexts)
+    return reply
+

@@ -1,0 +1,8 @@
+PyPDF2
+python-dotenv
+qdrant-client
+llama-index
+streamlit
+openai
+sentence-transformers
+scikit-learn

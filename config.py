@@ -7,6 +7,6 @@ URL ="localhost"
 # Qdrant dimension of the collection
 DIMENSION = 384
 # Qdrant collection name
-COLLECTION_NAME = "SEARCH_ENGINE"
+COLLECTION_NAME = "TATASTEEL"
 METRIC_NAME ="COSINE"
 MODEL_NAME="all-MiniLM-L6-v2"
