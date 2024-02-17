@@ -1,19 +1,18 @@
 import openai
-key = 'd6bcc40e68fc4119abcd43b4661dc8e3'
-location = 'eastus'
-endpoint = 'https://openaidemos007.openai.azure.com/'
+from config import *
+
 openai.api_type = "azure"
-openai.api_key = key
-openai.api_base = endpoint
-deployment_id_gpt4='gpt4'
-openai.api_key = key
+openai.api_key = KEY
+openai.api_base = ENDPOINT
+openai.location = LOCATION
+deployment_id_gpt4=DEPLOYMENT_ID
 
 import openai
 from openai import AzureOpenAI
 
 client = AzureOpenAI(
-  azure_endpoint = endpoint, 
-  api_key=key,  
+  azure_endpoint = ENDPOINT, 
+  api_key=KEY,  
   api_version="2023-05-15"
 )
 

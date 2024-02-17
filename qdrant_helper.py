@@ -80,7 +80,7 @@ def get_search_results(user_input, CATEGORY) -> str:
     search_result = client.search(collection_name=COLLECTION_NAME,
                                     query_vector=xq.tolist(), 
                                     query_filter=query_filter,
-                                    limit=3)
+                                    limit=5)
     contexts =""
     for result in search_result:
         contexts +=  result.payload['token']+"\n---\n"
