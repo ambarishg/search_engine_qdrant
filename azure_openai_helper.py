@@ -17,7 +17,10 @@ client = AzureOpenAI(
 )
 
 def create_prompt(context,query):
-    header = "You are a helpful assistant"
+    header = "Use the context to answer the question. \
+        If the answer is not present in the context, \
+            please mention that \
+            I do not know the answer \n\n"
     return header + context + "\n\n" + query + "\n"
 
 

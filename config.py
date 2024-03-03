@@ -7,6 +7,7 @@ values_env = dotenv_values(".env")
 
 MODEL_NAME=values_env["MODEL_NAME"]
 MODEL_NAME_CLIP=values_env["MODEL_NAME_CLIP"]
+CROSSENCODER_MODEL_NAME=values_env["CROSSENCODER_MODEL_NAME"]
 IMAGES_PATH =values_env["IMAGES_PATH"]
 
 # Qdrant server URL

@@ -8,7 +8,7 @@ import uuid
 
 from azure_openai_helper import generate_answer_from_context
 from pdf_helper import get_pdf_data, get_chunks
-from model_helper import load_model
+from model_helper import *
 
 def get_qdrant_client():
     client = qc.QdrantClient(url=URL)
@@ -64,6 +64,11 @@ def insert_qdrant_docs(FILE_PATH,CATEGORY) -> None:
 #   CATEGORY: category of the documents
 
 def get_search_results(user_input, CATEGORY) -> str:
+    contexts = retrieve_context(user_input, CATEGORY)
+    reply = generate_answer_from_context(user_input, contexts)
+    return reply
+
+def retrieve_context(user_input, CATEGORY):
     model = load_model()
     xq = model.encode(user_input,convert_to_tensor=True)
     if CATEGORY == '':
@@ -84,6 +89,54 @@ def get_search_results(user_input, CATEGORY) -> str:
     contexts =""
     for result in search_result:
         contexts +=  result.payload['token']+"\n---\n"
-    reply = generate_answer_from_context(user_input, contexts)
-    return reply
+    return contexts
+
+def retrieve_context_semantic_ranker(user_input, 
+                                     CATEGORY,
+                                     RANKER_RESULTS_LIMIT = 5,
+                                     RESULTS_LIMIT = 25,
+                                    ) -> str:
+    model = load_model()
+    xq = model.encode(user_input,convert_to_tensor=True)
+    if CATEGORY == '':
+        query_filter = None
+    else:
+        query_filter=qmodels.Filter(
+            must= [
+                FieldCondition(
+                    key="Category",
+                    match=models.MatchValue(value=CATEGORY),
+                )
+            ],
+        )
+    search_result = client.search(collection_name=COLLECTION_NAME,
+                                    query_vector=xq.tolist(), 
+                                    query_filter=query_filter,
+                                    limit=RESULTS_LIMIT)
+    
+    contexts_list = []
+    for result in search_result:
+        contexts_list.append(result.payload['token'])
+
+    cross_encoder = CrossEncoder(CROSSENCODER_MODEL_NAME)
+    cross_inp = [[user_input, hit] for hit in contexts_list]
+    cross_scores = cross_encoder.predict(cross_inp)
+
+    cross_scores_text = []
+    cross_scores_length = len(cross_scores)
+    for i in range(cross_scores_length):
+        d = {}
+        d['score'] = cross_scores[i]
+        d['text'] = contexts_list[i]
+        cross_scores_text.append(d)
+    
+    hits = sorted(cross_scores_text, key=lambda x: x['score'], reverse=True)
+    contexts =""
+    hits_selected = hits[:RANKER_RESULTS_LIMIT]
+    contexts =""
+    for i in range(len(hits_selected)):
+        contexts  +=  hits_selected[i]['text']+"\n---\n"
+    
+    return contexts 
+
 

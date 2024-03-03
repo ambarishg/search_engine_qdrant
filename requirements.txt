@@ -8,3 +8,4 @@ scikit-learn
 uvicorn[standard]
 fastapi
 requests
+trulens_eval
